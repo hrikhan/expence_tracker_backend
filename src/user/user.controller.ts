@@ -8,6 +8,7 @@ import {
   UseGuards,
   ParseIntPipe,
   NotFoundException,
+  Request,
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import { User } from './user.entity';
@@ -36,18 +37,22 @@ class UpdateUserDto {
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
-  @Get(':id')
-  @ApiOperation({ summary: 'Get user by ID' })
+  @Get('profile')
+  @ApiOperation({ summary: 'Get current user profile from token' })
   @ApiResponse({
     status: 200,
     description: 'User profile retrieved successfully.',
   })
-  @ApiResponse({ status: 404, description: 'User not found.' })
-  async findById(@Param('id', ParseIntPipe) id: number) {
-    const user = await this.userService.findById(id);
+  async getProfile(
+    @Request() req: { user: { userId: number; email: string } },
+  ) {
+    // req.user is automatically populated by JwtAuthGuard from the decoded token
+    const userId = req.user.userId;
+    const user = await this.userService.findById(userId);
     if (!user) {
       throw new NotFoundException('User not found');
     }
+
     const result: Partial<User> = { ...user };
     delete result.password;
     return result;
