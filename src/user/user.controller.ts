@@ -3,10 +3,8 @@ import {
   Get,
   Patch,
   Delete,
-  Param,
   Body,
   UseGuards,
-  ParseIntPipe,
   NotFoundException,
   Request,
 } from '@nestjs/common';
@@ -21,6 +19,7 @@ import {
   ApiBearerAuth,
   ApiProperty,
 } from '@nestjs/swagger';
+import * as bcrypt from 'bcrypt';
 
 class UpdateUserDto {
   @ApiProperty({ required: false, example: 'user@example.com' })
@@ -58,21 +57,29 @@ export class UserController {
     return result;
   }
 
-  @Patch(':id')
-  @ApiOperation({ summary: 'Update user by ID' })
+  @Patch('profile')
+  @ApiOperation({ summary: 'Update current user profile' })
   @ApiBody({ type: UpdateUserDto })
   @ApiResponse({ status: 200, description: 'User updated successfully.' })
   async update(
-    @Param('id', ParseIntPipe) id: number,
+    @Request() req: { user: { userId: number; email: string } },
     @Body() data: UpdateUserDto,
   ) {
-    return this.userService.update(id, data);
+    const userId = req.user.userId;
+    const updateData = { ...data };
+
+    if (updateData.password) {
+      updateData.password = await bcrypt.hash(updateData.password, 10);
+    }
+
+    return this.userService.update(userId, updateData);
   }
 
-  @Delete(':id')
-  @ApiOperation({ summary: 'Delete user by ID' })
+  @Delete('profile')
+  @ApiOperation({ summary: 'Delete current user account' })
   @ApiResponse({ status: 200, description: 'User deleted successfully.' })
-  async remove(@Param('id', ParseIntPipe) id: number) {
-    return this.userService.remove(id);
+  async remove(@Request() req: { user: { userId: number; email: string } }) {
+    const userId = req.user.userId;
+    return this.userService.remove(userId);
   }
 }
