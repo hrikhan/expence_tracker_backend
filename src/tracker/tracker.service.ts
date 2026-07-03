@@ -29,11 +29,38 @@ export class TrackerService {
     );
   }
 
-  findAll(userId: number) {
-    return this.repo.find({
+  async findAll(userId: number) {
+    const items = await this.repo.find({
       where: { user: { id: userId } },
-      order: { createdAt: 'DESC' },
+      order: { date: 'DESC', createdAt: 'DESC' },
     });
+
+    const expenseSum = await this.repo
+      .createQueryBuilder('tracker')
+      .select('SUM(tracker.cost)', 'sum')
+      .innerJoin('tracker.user', 'user')
+      .where('user.id = :userId', { userId })
+      .andWhere("tracker.type = 'EXPENSE'")
+      .getRawOne<{ sum: string | null }>();
+
+    const incomeSum = await this.repo
+      .createQueryBuilder('tracker')
+      .select('SUM(tracker.cost)', 'sum')
+      .innerJoin('tracker.user', 'user')
+      .where('user.id = :userId', { userId })
+      .andWhere("tracker.type = 'INCOME'")
+      .getRawOne<{ sum: string | null }>();
+
+    const totalExpense = parseFloat(expenseSum?.sum ?? '0') || 0;
+    const totalIncome = parseFloat(incomeSum?.sum ?? '0') || 0;
+    const balance = totalIncome - totalExpense;
+
+    return {
+      items,
+      totalExpense,
+      totalIncome,
+      balance,
+    };
   }
 
   async getTodayStats(userId: number) {
@@ -73,5 +100,29 @@ export class TrackerService {
       totalIncome,
       balance,
     };
+  }
+
+  async findOne(id: number, userId: number) {
+    return this.repo.findOne({
+      where: { id, user: { id: userId } },
+    });
+  }
+
+  async update(id: number, userId: number, data: Partial<Tracker>) {
+    const tracker = await this.findOne(id, userId);
+    if (!tracker) {
+      return null;
+    }
+    await this.repo.update(id, data);
+    return this.findOne(id, userId);
+  }
+
+  async remove(id: number, userId: number) {
+    const tracker = await this.findOne(id, userId);
+    if (!tracker) {
+      return false;
+    }
+    await this.repo.delete(id);
+    return true;
   }
 }
