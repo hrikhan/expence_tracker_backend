@@ -5,6 +5,7 @@ import { ConfigModule } from '@nestjs/config';
 import { UserModule } from './user/user.module';
 import { AuthModule } from './auth/auth.module';
 import { TrackerModule } from './tracker/tracker.module';
+import { AppController } from './app.controller';
 
 @Module({
   imports: [
@@ -24,5 +25,6 @@ import { TrackerModule } from './tracker/tracker.module';
     AuthModule,
     TrackerModule,
   ],
+  controllers: [AppController],
 })
 export class AppModule {}
